@@ -10,8 +10,13 @@ The code is structured to contain a set of functions, used in the
 core computation, listed in the parent direcotry and additional sets of 
 further specialized scripts listed in subdirectories.
 
-Main Function - Fiber3D.m
-
+Main Function - Fiber3D.m - Takes an image and computes and ODF
+fft_Radial_filter3.m - Filters the power spectrum
+getSpherPts.m - Obtain a sampling of points on the unit sphere 
+MinMax.m - Performs a modified min-max normalization on ODF.
+nearestpoint.m - Functions that aids in the computation of the 
+	condensation of the power spectrum to the unit sphere
+ReduceAmp.m - Converts the power spectrum to the unit sphere by summing along the frequencies
 
 Description of subdirectories
 
