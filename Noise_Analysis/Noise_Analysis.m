@@ -28,20 +28,20 @@ Relative_Dir = ['..', filesep,'Biomedical_Image_Data', filesep, 'SW_Actin_Chondr
 filename = 'Pre-Cell1-SRRF16-t0.tif';
 for i = 1:136
     SWIM_Raw(:,:,i) = imread([Relative_Dir,filesep, filename],i);
-    SW_IM(:,:,i) = SWIM_Raw(33:end, 31:end, i);
+    SW_IM(:,:,i) = SWIM_Raw(33:end, 31:end, i); % the cutoffs in indices only cut background stuff. They make the image cubic
 end
 clear SWIM_Raw
 
 %% Set SNR and harmonic parameters
 % Signal to noise ratio
-SNR = [0.2, 0.4, 0.6, 0.8, 1, 2:2:20];
+SNR = [0.2, 0.4, 0.6, 0.8, 1, 2:2:10];
 
 n = length(SNR);
 maxSNR = max(SNR);
 minSNR = min(SNR);
 
 % spherical harmonic order
-SHorder = [10, 20, 30, 40, 50, 60, 70, 78]; 
+SHorder = [10, 30, 50]; 
 
 %% Analyze Simulated Images
 
@@ -93,7 +93,7 @@ for i = 1:length(SHorder)
      ODF_Noiseless_simFibs(:,i) = qball(sPS, params.Nsph, SHorder(i));
     
     % min-max normalization
-    [ODF_Noiseless_simFibs(:,i), ~] = MinMax(ODF_Noiseless_simFibs(:,i));
+    [ODF_Noiseless_simFibs(:,i), GFA_NoiseFree(i)] = MinMax(ODF_Noiseless_simFibs(:,i));
 end
 
 clear ODF_temp GFA_temp
@@ -117,7 +117,7 @@ for j = 1:length(SNR)
          ODF_Sim_fibs = qball(sPS, params.Nsph, SHorder(i));
 
         % min-max normalization
-        [ODF_Sim_fibs, ~] = MinMax(ODF_Sim_fibs);
+        [ODF_Sim_fibs, GFA_Noiseless_Diff(i,j)] = MinMax(ODF_Sim_fibs);
        
         % measure distance from noiseless approximation
         distNoiseLess_simFibs(i,j) = computeFisherRao(ODF_Noiseless_simFibs(:,i),ODF_Sim_fibs);
@@ -127,16 +127,7 @@ for j = 1:length(SNR)
 end
 
 clear IM_Noise
-figure;
 
-for i = 1:length(SHorder)
-    plot(SNR, distNoiseLess_simFibs(i,:), 'LineWidth', 2, 'DisplayName',['L = ',num2str(SHorder(i))]); hold on
-end
-
-title('Synthetic Data','FontSize',24);
-xlabel('SNR'); ylabel('Distance');
-set(gca,'FontSize',18)
-box on; grid on;
 
 % Plot GFA
 % figure;
@@ -178,8 +169,8 @@ ODF_SW = zeros(size(Ncart,1),1);
 %GFA_SW = zeros(1,length(SNR));
 distNoiseLess_SW = zeros(length(SHorder),length(SNR));
 ODF_Noiseless_SW = zeros(size(Ncart,1),length(SHorder));
-GFA_NoiseFree = zeros(length(SHorder),1);
-GFA_Noiseless_Diff = zeros(length(SHorder),length(SNR));
+GFA_NoiseFree_SW = zeros(length(SHorder),1);
+GFA_Noiseless_Diff_SW = zeros(length(SHorder),length(SNR));
 
 disp('Analyzing Scott Wood Data'); disp('');
 % noiseless approximation
@@ -200,7 +191,7 @@ for i = 1:length(SHorder)
      ODF_Noiseless_SW(:,i) = qball(sPS, params.Nsph, SHorder(i));
     
     % min-max normalization
-    [ODF_Noiseless_SW(:,i), ~] = MinMax(ODF_Noiseless_SW(:,i));
+    [ODF_Noiseless_SW(:,i), GFA_NoiseFree_SW(i)] = MinMax(ODF_Noiseless_SW(:,i));
     
 end
 
@@ -219,7 +210,7 @@ for j = 1:length(SNR)
         ODF_SW = qball(sPS, params.Nsph, SHorder(i));
 
         % min-max normalization
-        [ODF_SW, ~] = MinMax(ODF_SW);
+        [ODF_SW, GFA_Noiseless_Diff_SW(i,j)] = MinMax(ODF_SW);
        
         % measure distance from noiseless approximation
         distNoiseLess_SW(i,j) = computeFisherRao(ODF_Noiseless_SW(:,i),ODF_SW);
@@ -228,14 +219,35 @@ for j = 1:length(SNR)
 end
 
 clear SW_NoiseyIM;
-figure;
 
-for i = 1:length(SHorder)
-    plot(SNR, distNoiseLess_SW(i,:), 'LineWidth', 2, 'DisplayName',['L = ',num2str(SHorder(i))]); hold on
-end
+figure; % plot distances in one graph
+% simulated Fibers
+plot(SNR(1:7), distNoiseLess_simFibs(1,1:7),'k--', 'LineWidth', 2, 'DisplayName','L = 10; Simulated'); hold on
+plot(SNR(1:7), distNoiseLess_simFibs(2,1:7),'r--', 'LineWidth', 2, 'DisplayName','L = 30; Simulated'); hold on
+plot(SNR(1:7), distNoiseLess_simFibs(3,1:7),'b--', 'LineWidth', 2, 'DisplayName','L = 50; Simulated'); hold on
 
-title('SW Data','FontSize',24);
+% biomedical image data
+plot(SNR(1:7), distNoiseLess_SW(1,1:7), 'k', 'LineWidth', 2, 'DisplayName', 'L = 10; Biomedical'); hold on
+plot(SNR(1:7), distNoiseLess_SW(2,1:7), 'r', 'LineWidth', 2, 'DisplayName', 'L = 30; Biomedical'); hold on
+plot(SNR(1:7), distNoiseLess_SW(3,1:7), 'b', 'LineWidth', 2, 'DisplayName', 'L = 50; Biomedical'); hold on
+
 xlabel('SNR'); ylabel('Distance');
+set(gca,'FontSize',18)
+box on; grid on; hold off
+
+
+figure; % plot GFAs
+% simulated Fibers
+plot(SNR(1:7), GFA_Noiseless_Diff(1,1:7),'k--', 'LineWidth', 2, 'DisplayName','L = 10; Simulated'); hold on
+plot(SNR(1:7), GFA_Noiseless_Diff(2,1:7),'r--', 'LineWidth', 2, 'DisplayName','L = 30; Simulated'); hold on
+plot(SNR(1:7), GFA_Noiseless_Diff(3,1:7),'b--', 'LineWidth', 2, 'DisplayName','L = 50; Simulated'); hold on
+
+% Biomedical Image data
+plot(SNR(1:7), GFA_Noiseless_Diff_SW(1,1:7),'k', 'LineWidth', 2, 'DisplayName','L = 10; Biomedical'); hold on
+plot(SNR(1:7), GFA_Noiseless_Diff_SW(2,1:7),'r', 'LineWidth', 2, 'DisplayName','L = 30; Biomedical'); hold on
+plot(SNR(1:7), GFA_Noiseless_Diff_SW(3,1:7),'b', 'LineWidth', 2, 'DisplayName','L = 50; Biomedical'); hold on
+
+xlabel('SNR'); ylabel('Anisotropy');
 set(gca,'FontSize',18)
 box on; grid on;
 
